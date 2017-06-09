@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 project(FEXIPRO)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG -std=c++0x -march=native -ftree-vectorize -lgfortran -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG -std=c++0x -march=native -ftree-vectorize -lgfortran -fopenmp")
 
 set(alg
         alg/Naive.h
@@ -46,15 +46,8 @@ set(structs
         structs/RedSVDMatrixRow.h
         structs/RedSVDMatrixRow2.h)
 
-
-find_package(Armadillo REQUIRED)
-
-if(Armadillo_FOUND)
-    message(STATUS "Armadillo found " ${ARMADILLO_LIBRARY_DIRS})
-    include_directories(${ARMADILLO_INCLUDE_DIRS})
-    message(STATUS "Armadillo_LIBRARY_DIRS in  " ${ARMADILLO_LIBRARY_DIRS})
-    message(STATUS "Armadillo_INCLUDE_DIRS in  " ${ARMADILLO_INCLUDE_DIRS})
-endif()
+set(ARMADILLO_INCLUDE_DIRS "~/packages/include/aramdillo")
+include_directories(${ARMADILLO_INCLUDE_DIRS})
 
 find_package(Boost COMPONENTS serialization program_options)
 
@@ -72,16 +65,16 @@ if(Boost_FOUND)
     message(STATUS "Boost_INCLUDE_DIRS in  " ${Boost_INCLUDE_DIRS})
 endif()
 
-set(MLPACK_INCLUDE_DIR "/usr/local/include/mlpack/")
-set(MLPACK_LIBRARY_DIR "/usr/local/lib/libmlpack.so")
+set(MLPACK_INCLUDE_DIR "~/packages/include")
+set(MLPACK_LIBRARY "~/packages/lib/libmlpack.so")
 
 find_path(MLPACK_INCLUDE_DIR
         NAMES core.hpp prereqs.hpp
         PATHS ${MLPACK_INCLUDE_DIR})
 
-find_library(MLPACK_LIBRARY
-        NAMES mlpack
-        PATHS ${MLPACK_LIBRARY_DIR})
+#find_library(MLPACK_LIBRARY
+#        NAMES mlpack
+#        PATHS ${MLPACK_LIBRARY_DIR})
 
 if(MLPACK_LIBRARY)
     message(STATUS "MLPACK found " ${MLPACK_LIBRARY_DIR})
@@ -93,6 +86,6 @@ set_target_properties(lib PROPERTIES LINKER_LANGUAGE CXX)
 
 add_executable(runFEXIPRO runFEXIPRO.cpp)
 target_link_libraries(runFEXIPRO lib)
-target_link_libraries(runFEXIPRO ${ARMADILLO_LIBRARIES})
+target_link_libraries(runFEXIPRO armadillo)
 target_link_libraries(runFEXIPRO ${Boost_LIBRARIES})
 target_link_libraries(runFEXIPRO ${MLPACK_LIBRARY})

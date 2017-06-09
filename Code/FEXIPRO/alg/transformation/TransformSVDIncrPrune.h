@@ -100,7 +100,7 @@ inline void TransformSVDIncrPrune::refine(vector<VectorElement> &heap,
 
     double originalLowerBound = (lowerBoundInNewSpace - pRowPtr->partialSumOfCoordinate) * 0.5 - pRowPtr->sumOfCoordinate - sumOfQCoordinate;
     originalLowerBound *= newSVDQNorm;
-    originalLowerBound = isnan(originalLowerBound)?0:originalLowerBound;
+    originalLowerBound = std::isnan(originalLowerBound)?0:originalLowerBound;
 
     for (int rowIndex = k; rowIndex < preprocessedP->rowNum; rowIndex++) {
 
@@ -145,7 +145,7 @@ inline void TransformSVDIncrPrune::refine(vector<VectorElement> &heap,
                     const RedSVDMatrixRow *pRowPtr = preprocessedP->getRowPtr(gRowIDForBoundItem);
                     originalLowerBound = (lowerBoundInNewSpace - pRowPtr->partialSumOfCoordinate) * 0.5 - pRowPtr->sumOfCoordinate - sumOfQCoordinate;
                     originalLowerBound *= newSVDQNorm;
-                    originalLowerBound = isnan(originalLowerBound)?0:originalLowerBound;
+                    originalLowerBound = std::isnan(originalLowerBound)?0:originalLowerBound;
                 }
             }
 

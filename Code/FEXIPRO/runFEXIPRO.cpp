@@ -1,4 +1,4 @@
-﻿#include "util/Base.h"
+#include "util/Base.h"
 #include "util/Conf.h"
 #include "structs/Matrix.h"
 #include "util/Logger.h"
@@ -16,6 +16,7 @@
 #include "alg/transformation/TransformSVDIncrPrune2.h"
 #include "alg/int/IntUpperBound2.h"
 #include <boost/program_options.hpp>
+#include <omp.h>
 
 namespace po = boost::program_options;
 
@@ -29,6 +30,8 @@ void basicLog(const Matrix &q, const Matrix &p, const int k) {
 }
 
 int main(int argc, char **argv) {
+    omp_set_dynamic(0);
+    omp_set_num_threads(1);
 
     po::options_description desc("Allowed options");
     desc.add_options()
@@ -80,7 +83,7 @@ int main(int argc, char **argv) {
     // ToDo: replace the old name (FEIPR) with FEXIPRO
 
     if (Conf::algName == "Naive") {
-        string logFileName = Conf::logPathPrefix + "-" + Conf::dataset + "-" + Conf::algName + "-" + to_string(Conf::k) + ".txt";
+        string logFileName = Conf::logPathPrefix + Conf::dataset + "-" + Conf::algName + "-" + to_string(Conf::k) + ".txt";
         Logger::open(logFileName);
         basicLog(q, p, Conf::k);
 
@@ -88,7 +91,7 @@ int main(int argc, char **argv) {
 
     } else if (Conf::algName == "SIR") {
 
-        string logFileName = Conf::logPathPrefix + "-" + Conf::dataset + "-" + Conf::algName + "-" + to_string(Conf::k) + "-" + to_string(Conf::scalingValue) + "-" + to_string(Conf::SIGMA) + ".txt";
+        string logFileName = Conf::logPathPrefix + Conf::dataset + "-" + Conf::algName + "-" + to_string(Conf::k) + "-" + to_string(Conf::scalingValue) + "-" + to_string(Conf::SIGMA) + ".txt";
         Logger::open(logFileName);
         basicLog(q, p, Conf::k);
         Logger::Log("SIGMA: " + to_string(Conf::SIGMA));
@@ -99,7 +102,7 @@ int main(int argc, char **argv) {
 
     } else if (Conf::algName == "SR") {
 
-        string logFileName = Conf::logPathPrefix + "-" + Conf::dataset + "-" + Conf::algName + "-" + to_string(Conf::k) + "-" + to_string(Conf::scalingValue) + "-" + to_string(Conf::SIGMA) + ".txt";
+        string logFileName = Conf::logPathPrefix + Conf::dataset + "-" + Conf::algName + "-" + to_string(Conf::k) + "-" + to_string(Conf::scalingValue) + "-" + to_string(Conf::SIGMA) + ".txt";
         Logger::open(logFileName);
         basicLog(q, p, Conf::k);
         Logger::Log("SIGMA: " + to_string(Conf::SIGMA));
@@ -109,7 +112,7 @@ int main(int argc, char **argv) {
 
     } else if (Conf::algName == "I") {
 
-        string logFileName = Conf::logPathPrefix + "-" + Conf::dataset + "-" + Conf::algName + "-" + to_string(Conf::k) + "-" + to_string(Conf::scalingValue) + ".txt";
+        string logFileName = Conf::logPathPrefix + Conf::dataset + "-" + Conf::algName + "-" + to_string(Conf::k) + "-" + to_string(Conf::scalingValue) + ".txt";
         Logger::open(logFileName);
         basicLog(q, p, Conf::k);
         Logger::Log("Scaling Value: " + to_string(Conf::scalingValue));
@@ -119,7 +122,7 @@ int main(int argc, char **argv) {
 
     } else if (Conf::algName == "I-SIMD") {
 
-        string logFileName = Conf::logPathPrefix + "-" + Conf::dataset + "-" + Conf::algName + "-" + to_string(Conf::k) + "-" + to_string(Conf::scalingValue) + ".txt";
+        string logFileName = Conf::logPathPrefix + Conf::dataset + "-" + Conf::algName + "-" + to_string(Conf::k) + "-" + to_string(Conf::scalingValue) + ".txt";
         Logger::open(logFileName);
         basicLog(q, p, Conf::k);
         Logger::Log("Scaling Value: " + to_string(Conf::scalingValue));
@@ -128,7 +131,7 @@ int main(int argc, char **argv) {
         simdIntUpperBound.topK();
 
     } else if (Conf::algName == "S"){
-        string logFileName = Conf::logPathPrefix + "-" + Conf::dataset  + "-" + Conf::algName + "-" + to_string(Conf::k) + "-" +
+        string logFileName = Conf::logPathPrefix + Conf::dataset  + "-" + Conf::algName + "-" + to_string(Conf::k) + "-" +
                              to_string(Conf::SIGMA) + ".txt";
         Logger::open(logFileName);
         basicLog(q, p, Conf::k);
@@ -138,7 +141,7 @@ int main(int argc, char **argv) {
         svdIncrPrune.topK();
 
     } else if (Conf::algName == "S-Ind"){
-        string logFileName = Conf::logPathPrefix + "-" + Conf::dataset  + "-" + Conf::algName + "-" + to_string(Conf::k) + "-" +
+        string logFileName = Conf::logPathPrefix + Conf::dataset  + "-" + Conf::algName + "-" + to_string(Conf::k) + "-" +
                              to_string(Conf::SIGMA) + ".txt";
         Logger::open(logFileName);
         basicLog(q, p, Conf::k);
@@ -149,7 +152,7 @@ int main(int argc, char **argv) {
 
     } else if (Conf::algName == "SI") {
 
-        string logFileName = Conf::logPathPrefix + "-" + Conf::dataset  + "-" + Conf::algName + "-" + to_string(Conf::k) + "-" + to_string(Conf::scalingValue) + "-" +
+        string logFileName = Conf::logPathPrefix + Conf::dataset  + "-" + Conf::algName + "-" + to_string(Conf::k) + "-" + to_string(Conf::scalingValue) + "-" +
                              to_string(Conf::SIGMA) + ".txt";
         Logger::open(logFileName);
         basicLog(q, p, Conf::k);
@@ -161,7 +164,7 @@ int main(int argc, char **argv) {
 
     } else if (Conf::algName == "BallTree") {
 
-        string logFileName = Conf::logPathPrefix + "-" + Conf::dataset  + "-" + Conf::algName + "-" + to_string(Conf::k) + ".txt";
+        string logFileName = Conf::logPathPrefix + Conf::dataset  + "-" + Conf::algName + "-" + to_string(Conf::k) + ".txt";
         Logger::open(logFileName);
         basicLog(q, p, Conf::k);
 
@@ -169,7 +172,7 @@ int main(int argc, char **argv) {
 
     } else if (Conf::algName == "FastMKS") {
 
-        string logFileName = Conf::logPathPrefix + "-" + Conf::dataset  + "-" + Conf::algName + "-" + to_string(Conf::k) + ".txt";
+        string logFileName = Conf::logPathPrefix + Conf::dataset  + "-" + Conf::algName + "-" + to_string(Conf::k) + ".txt";
         Logger::open(logFileName);
         basicLog(q, p, Conf::k);
 
