@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 project(FEXIPRO)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG -std=c++0x -march=native -ftree-vectorize -lgfortran -fopenmp")
+add_definitions(-DTIME_IT)
 
 set(alg
         alg/Naive.h
