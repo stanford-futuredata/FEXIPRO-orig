@@ -47,6 +47,8 @@ set(structs
         structs/RedSVDMatrixRow.h
         structs/RedSVDMatrixRow2.h)
 
+link_directories("/usr/lib/openblas-base")
+
 set(ARMADILLO_INCLUDE_DIRS "~/packages/include/aramdillo")
 include_directories(${ARMADILLO_INCLUDE_DIRS})
 
@@ -90,3 +92,4 @@ target_link_libraries(runFEXIPRO lib)
 target_link_libraries(runFEXIPRO armadillo)
 target_link_libraries(runFEXIPRO ${Boost_LIBRARIES})
 target_link_libraries(runFEXIPRO ${MLPACK_LIBRARY})
+target_link_libraries(runFEXIPRO openblas)

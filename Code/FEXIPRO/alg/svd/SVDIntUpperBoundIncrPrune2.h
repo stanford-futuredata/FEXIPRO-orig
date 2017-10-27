@@ -18,6 +18,7 @@ class SIRPrune {
   private:
     Monitor tt;
     double offlineTime;
+    double onlineTime;
 
     ExtendMatrix<SIRMatrixRow> *preprocessedP;
     Matrix *q;
@@ -52,7 +53,9 @@ class SIRPrune {
   public:
     SIRPrune(const int k, const int scalingValue, const double SIGMA, Matrix *q, Matrix *p);
     ~SIRPrune();
-    void topK();
+    void topK(const int start_id, const int end_id);
+    void outputResults();
+    VectorElement *results;
 
 };
 
@@ -284,6 +287,7 @@ inline void SIRPrune::refine(VectorElement *heap, const double qNorm, double *ne
 }
 
 inline SIRPrune::SIRPrune(const int k, const int scalingValue, const double SIGMA, Matrix *q, Matrix *p) {
+  this->results = new VectorElement[q->rowNum * k];
 
   mat P_t;
   P_t.load(Conf::pDataPath, csv_ascii);
@@ -311,6 +315,7 @@ inline SIRPrune::SIRPrune(const int k, const int scalingValue, const double SIGM
 
   tt.stop();
   offlineTime = tt.getElapsedTime();
+  onlineTime = 0;
 }
 
 inline SIRPrune::~SIRPrune() {
@@ -323,13 +328,14 @@ inline SIRPrune::~SIRPrune() {
     delete preprocessedP;
   }
 
+  if (results) {
+    delete results;
+  }
 }
 
-inline void SIRPrune::topK() {
+inline void SIRPrune::topK(const int start_id, const int end_id) {
 
   tt.start();
-
-  VectorElement *results = new VectorElement[q->rowNum * k];
 
   double *newQ = new double[q->colNum];
   int *newQIntPtr = new int[q->colNum];
@@ -351,7 +357,7 @@ inline void SIRPrune::topK() {
   const double pRatio1 = preprocessedP->ratio1;
   const double pRatio2 = preprocessedP->ratio2;
 
-  for (int qID = 0; qID < q->rowNum; qID++) {
+  for (int qID = start_id; qID < end_id; qID++) {
 
     VectorElement *heap = &results[qID * k];
 
@@ -369,7 +375,13 @@ inline void SIRPrune::topK() {
   }
 
   tt.stop();
+  onlineTime += tt.getElapsedTime();
 
+  delete[] newQ;
+  delete[] newQIntPtr;
+}
+
+void SIRPrune::outputResults() {
 #ifdef TIME_IT
   Logger::Log("Avg Num of p which can pass first Cauchy Schwarz inequality check: " + to_string((counter1 + 0.0)/ q
         ->rowNum));
@@ -381,7 +393,7 @@ inline void SIRPrune::topK() {
 
 
   Logger::Log("preprocess time: " + to_string(offlineTime) + " secs");
-  Logger::Log("online time: " + to_string(tt.getElapsedTime()) + " secs");
+  Logger::Log("online time: " + to_string(onlineTime) + " secs");
 
   if (Conf::outputResult) {
     string resultFileName = Conf::resultPathPrefix + "-" + Conf::dataset + "-" + Conf::algName + "-" + to_string
@@ -390,9 +402,6 @@ inline void SIRPrune::topK() {
     FileUtil::outputResult(q->rowNum, k, results, resultFileName);
   }
 
-  delete[] newQ;
-  delete[] newQIntPtr;
-  delete[] results;
 }
 
 #endif //SIRPRUNE_H
