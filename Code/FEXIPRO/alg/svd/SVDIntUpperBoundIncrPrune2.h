@@ -16,6 +16,7 @@
 class SIRPrune {
 
   private:
+    VectorElement *results;
     Monitor tt;
     double offlineTime;
     double onlineTime;
@@ -54,8 +55,8 @@ class SIRPrune {
     SIRPrune(const int k, const int scalingValue, const double SIGMA, Matrix *q, Matrix *p);
     ~SIRPrune();
     void topK(const int start_id, const int end_id);
+    void addToOnlineTime(double time);
     void outputResults();
-    VectorElement *results;
 
 };
 
@@ -379,6 +380,10 @@ inline void SIRPrune::topK(const int start_id, const int end_id) {
 
   delete[] newQ;
   delete[] newQIntPtr;
+}
+
+void SIRPrune::addToOnlineTime(double time) {
+  onlineTime += time;
 }
 
 void SIRPrune::outputResults() {

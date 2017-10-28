@@ -8,6 +8,11 @@ if(RULE)
   add_definitions(-DONLINE_DECISION_RULE)
 endif()
 
+if(TEST_ONLY)
+  message(STATUS "Adding TEST_ONLY")
+  add_definitions(-DTEST_ONLY)
+endif()
+
 set(alg
         alg/Naive.h
         alg/svd/SVDIncrPrune.h

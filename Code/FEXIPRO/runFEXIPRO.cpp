@@ -205,9 +205,12 @@ int main(int argc, char **argv) {
       Logger::Log("Blocked MM wins");
     } else {
       Logger::Log("FEXIPRO wins");
+#ifndef TEST_ONLY
       sirPrune.topK(0, rand_ind);
       sirPrune.topK(rand_ind + num_users_per_block, q.rowNum);
+      sirPrune.addToOnlineTime(blocked_mm_time);
       sirPrune.outputResults();
+#endif
     }
 #else
     sirPrune.topK(0, q.rowNum);
