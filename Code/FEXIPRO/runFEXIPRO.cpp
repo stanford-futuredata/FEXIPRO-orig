@@ -163,6 +163,7 @@ int main(int argc, char **argv) {
     // Construct index
     SIRPrune sirPrune(Conf::k, Conf::scalingValue, Conf::SIGMA, &q, &p);
 
+#ifdef ONLINE_DECISION_RULE
     std::random_device rd;     // only used once to initialise (seed) engine
     std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
 
@@ -208,6 +209,10 @@ int main(int argc, char **argv) {
       sirPrune.topK(rand_ind + num_users_per_block, q.rowNum);
       sirPrune.outputResults();
     }
+#else
+    sirPrune.topK(0, q.rowNum);
+    sirPrune.outputResults();
+#endif
 
   } else if (Conf::algName == "SR") {
 
