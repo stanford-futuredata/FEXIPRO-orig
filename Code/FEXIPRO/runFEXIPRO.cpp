@@ -186,9 +186,9 @@ int main(int argc, char **argv) {
                 user_ptr, k, item_ptr, k, beta, matrix_product, n);
 
     if (Conf::k == 1) {
-      computeTopK(matrix_product, top_K_items, m, n, Conf::k);
-    } else {
       computeTopRating(matrix_product, top_K_items, m, n);
+    } else {
+      computeTopK(matrix_product, top_K_items, m, n, Conf::k);
     }
     tt.stop();
     const double blocked_mm_time = tt.getElapsedTime();
