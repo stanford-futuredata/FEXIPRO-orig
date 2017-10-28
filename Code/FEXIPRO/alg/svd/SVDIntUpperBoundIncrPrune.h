@@ -14,39 +14,48 @@
 // FEIPR-SI
 class SVDIntUpperBoundIncrPrune {
 
-  private:
-    Monitor tt;
-    double offlineTime;
+private:
+  VectorElement *results;
+  Monitor tt;
+  double offlineTime;
+  double onlineTime;
 
-    ExtendMatrix<SVDIntMatrixRow> *preprocessedP;
-    Matrix *q;
-    Matrix *u;
-    int k;
-    int checkDim;
-    int scalingValue;
+  ExtendMatrix<SVDIntMatrixRow> *preprocessedP;
+  Matrix *q;
+  Matrix *u;
+  int k;
+  int checkDim;
+  int scalingValue;
 
-    // log
+// log
 #ifdef TIME_IT
-    uint64_t counter1 = 0;
-    uint64_t counter2 = 0;
-    uint64_t counter3 = 0;
-    uint64_t counter4 = 0;
+  uint64_t counter1 = 0;
+  uint64_t counter2 = 0;
+  uint64_t counter3 = 0;
+  uint64_t counter4 = 0;
 #endif
 
-    void transferQ(double &qNorm, double &subQNorm, const double *qPtr, double *newQ,
-        int *qIntPtr, int &qSumOfCoordinate1, int &qSumOfCoordinate2, double &qRatio1, double &qRatio2);
-    void refine(VectorElement *heap, const double qNorm, double *newQ,
-        const double subQNorm, const int *newQIntPtr, int qSumOfCoordinate1, int qSumOfCoordinate2, double ratio1, double ratio2);
+  void transferQ(double &qNorm, double &subQNorm, const double *qPtr,
+                 double *newQ, int *qIntPtr, int &qSumOfCoordinate1,
+                 int &qSumOfCoordinate2, double &qRatio1, double &qRatio2);
+  void refine(VectorElement *heap, const double qNorm, double *newQ,
+              const double subQNorm, const int *newQIntPtr,
+              int qSumOfCoordinate1, int qSumOfCoordinate2, double ratio1,
+              double ratio2);
 
-  public:
-    SVDIntUpperBoundIncrPrune(const int k, const int scalingValue, const double SIGMA, Matrix *q, Matrix *p);
-    ~SVDIntUpperBoundIncrPrune();
-    void topK();
-
+public:
+  SVDIntUpperBoundIncrPrune(const int k, const int scalingValue,
+                            const double SIGMA, Matrix *q, Matrix *p);
+  ~SVDIntUpperBoundIncrPrune();
+  void topK(const int start_id, const int end_id);
+  void addToOnlineTime(double time);
+  void outputResults();
 };
 
-inline void SVDIntUpperBoundIncrPrune::transferQ(double &qNorm, double &subQNorm, const double *qPtr, double *newQ,
-    int *qIntPtr, int &qSumOfCoordinate1, int &qSumOfCoordinate2, double &qRatio1, double &qRatio2) {
+inline void SVDIntUpperBoundIncrPrune::transferQ(
+    double &qNorm, double &subQNorm, const double *qPtr, double *newQ,
+    int *qIntPtr, int &qSumOfCoordinate1, int &qSumOfCoordinate2,
+    double &qRatio1, double &qRatio2) {
 
   double minValue = DBL_MAX;
   double maxValue = -DBL_MAX;
@@ -76,7 +85,6 @@ inline void SVDIntUpperBoundIncrPrune::transferQ(double &qNorm, double &subQNorm
     }
 
     subQNorm += newQ[rowIndex] * newQ[rowIndex];
-
   }
 
   subQNorm = sqrt(subQNorm);
@@ -91,7 +99,7 @@ inline void SVDIntUpperBoundIncrPrune::transferQ(double &qNorm, double &subQNorm
     qRatio2 = scalingValue / denominator;
   }
 
-  qSumOfCoordinate2 = 0; //sumOfCoordinate
+  qSumOfCoordinate2 = 0; // sumOfCoordinate
 
   for (int colIndex = q->colNum - 1; colIndex >= checkDim; colIndex--) {
     qIntPtr[colIndex] = floor(newQ[colIndex] * qRatio2);
@@ -117,7 +125,6 @@ inline void SVDIntUpperBoundIncrPrune::transferQ(double &qNorm, double &subQNorm
     if (newQ[rowIndex] > maxValue) {
       maxValue = newQ[rowIndex];
     }
-
   }
 
   absMin = fabs(minValue);
@@ -130,7 +137,7 @@ inline void SVDIntUpperBoundIncrPrune::transferQ(double &qNorm, double &subQNorm
     qRatio1 = scalingValue / denominator;
   }
 
-  qSumOfCoordinate1 = 0; //sumOfCoordinate
+  qSumOfCoordinate1 = 0; // sumOfCoordinate
 
   for (int colIndex = checkDim - 1; colIndex >= 0; colIndex--) {
     qIntPtr[colIndex] = floor(newQ[colIndex] * qRatio1);
@@ -139,16 +146,18 @@ inline void SVDIntUpperBoundIncrPrune::transferQ(double &qNorm, double &subQNorm
 
   qRatio1 = 1 / qRatio1;
   qRatio2 = 1 / qRatio2;
-
 }
 
-inline void SVDIntUpperBoundIncrPrune::refine(VectorElement *heap, const double qNorm, double *newQ,
-    const double subQNorm, const int *newQIntPtr, int qSumOfCoordinate1, int qSumOfCoordinate2, double ratio1, double ratio2) {
+inline void SVDIntUpperBoundIncrPrune::refine(
+    VectorElement *heap, const double qNorm, double *newQ,
+    const double subQNorm, const int *newQIntPtr, int qSumOfCoordinate1,
+    int qSumOfCoordinate2, double ratio1, double ratio2) {
 
   int heapCount = 0;
   for (int rowIndex = 0; rowIndex < k; rowIndex++) {
     const SVDIntMatrixRow *pRowPtr = preprocessedP->getRowPtr(rowIndex);
-    heap_enqueue(Calculator::innerProduct(newQ, pRowPtr->rawData, q->colNum), pRowPtr->gRowID, heap, &heapCount);
+    heap_enqueue(Calculator::innerProduct(newQ, pRowPtr->rawData, q->colNum),
+                 pRowPtr->gRowID, heap, &heapCount);
   }
 
   double originalLowerBound = heap[0].data;
@@ -159,8 +168,7 @@ inline void SVDIntUpperBoundIncrPrune::refine(VectorElement *heap, const double 
 
     if (pRowPtr->norm * qNorm <= originalLowerBound) {
       break;
-    }
-    else {
+    } else {
 #ifdef TIME_IT
       counter1++;
 #endif
@@ -168,14 +176,14 @@ inline void SVDIntUpperBoundIncrPrune::refine(VectorElement *heap, const double 
       // svd incr
 
       int bound = pRowPtr->sumOfCoordinate1 + qSumOfCoordinate1;
-      const int* pIntPtr = pRowPtr->iRawData;
+      const int *pIntPtr = pRowPtr->iRawData;
 
-      for(int dim = 0; dim < checkDim; dim++) {
+      for (int dim = 0; dim < checkDim; dim++) {
         bound += pIntPtr[dim] * newQIntPtr[dim];
       }
 
       double subNormBound = subQNorm * pRowPtr->subNorm;
-      if(bound * ratio1 + subNormBound <= originalLowerBound){
+      if (bound * ratio1 + subNormBound <= originalLowerBound) {
         continue;
       }
 
@@ -185,11 +193,11 @@ inline void SVDIntUpperBoundIncrPrune::refine(VectorElement *heap, const double 
 
       double innerProduct = 0;
       const double *pPtr = pRowPtr->rawData;
-      for(int dim = 0; dim < checkDim; dim++) {
+      for (int dim = 0; dim < checkDim; dim++) {
         innerProduct += pPtr[dim] * newQ[dim];
       }
 
-      if(innerProduct + subNormBound <= originalLowerBound){
+      if (innerProduct + subNormBound <= originalLowerBound) {
         continue;
       }
 
@@ -198,11 +206,11 @@ inline void SVDIntUpperBoundIncrPrune::refine(VectorElement *heap, const double 
 #endif
 
       bound = pRowPtr->sumOfCoordinate2 + qSumOfCoordinate2;
-      for(int dim = checkDim; dim < q->colNum; dim++) {
+      for (int dim = checkDim; dim < q->colNum; dim++) {
         bound += pIntPtr[dim] * newQIntPtr[dim];
       }
 
-      if(innerProduct + bound * ratio2 <= originalLowerBound){
+      if (innerProduct + bound * ratio2 <= originalLowerBound) {
         continue;
       }
 
@@ -211,7 +219,7 @@ inline void SVDIntUpperBoundIncrPrune::refine(VectorElement *heap, const double 
 #endif
 
       // all bounds fail, calculate the exact value.
-      for(int dim = checkDim; dim < q->colNum; dim++) {
+      for (int dim = checkDim; dim < q->colNum; dim++) {
         innerProduct += pPtr[dim] * newQ[dim];
       }
 
@@ -225,7 +233,10 @@ inline void SVDIntUpperBoundIncrPrune::refine(VectorElement *heap, const double 
   }
 }
 
-inline SVDIntUpperBoundIncrPrune::SVDIntUpperBoundIncrPrune(const int k, const int scalingValue, const double SIGMA, Matrix *q, Matrix *p) {
+inline SVDIntUpperBoundIncrPrune::SVDIntUpperBoundIncrPrune(
+    const int k, const int scalingValue, const double SIGMA, Matrix *q,
+    Matrix *p) {
+  results = new VectorElement[q->rowNum * k];
 
   mat P_t;
   P_t.load(Conf::pDataPath, csv_ascii);
@@ -252,6 +263,7 @@ inline SVDIntUpperBoundIncrPrune::SVDIntUpperBoundIncrPrune(const int k, const i
 
   tt.stop();
   offlineTime = tt.getElapsedTime();
+  onlineTime = 0;
 }
 
 inline SVDIntUpperBoundIncrPrune::~SVDIntUpperBoundIncrPrune() {
@@ -264,13 +276,15 @@ inline SVDIntUpperBoundIncrPrune::~SVDIntUpperBoundIncrPrune() {
     delete preprocessedP;
   }
 
+  if (results) {
+    delete[] results;
+  }
 }
 
-inline void SVDIntUpperBoundIncrPrune::topK() {
+inline void SVDIntUpperBoundIncrPrune::topK(const int start_id,
+                                            const int end_id) {
 
   tt.start();
-
-  VectorElement *results = new VectorElement[q->rowNum * k];
 
   double *newQ = new double[q->colNum];
   int *newQIntPtr = new int[q->colNum];
@@ -286,45 +300,62 @@ inline void SVDIntUpperBoundIncrPrune::topK() {
   const double pRatio1 = preprocessedP->ratio1;
   const double pRatio2 = preprocessedP->ratio2;
 
-  for (int qID = 0; qID < q->rowNum; qID++) {
+  for (int qID = start_id; qID < end_id; qID++) {
 
     // step 1: transfer q
     VectorElement *heap = &results[qID * k];
 
     const double *qPtr = q->getRowPtr(qID);
 
-    transferQ(qNorm, subQNorm, qPtr, newQ, newQIntPtr, qSumOfCoordinate1, qSumOfCoordinate2, qRatio1, qRatio2);
+    transferQ(qNorm, subQNorm, qPtr, newQ, newQIntPtr, qSumOfCoordinate1,
+              qSumOfCoordinate2, qRatio1, qRatio2);
     ratio1 = qRatio1 * pRatio1;
     ratio2 = qRatio2 * pRatio2;
 
     // step 3: refine
-    refine(heap, qNorm, newQ, subQNorm, newQIntPtr, qSumOfCoordinate1, qSumOfCoordinate2, ratio1, ratio2);
+    refine(heap, qNorm, newQ, subQNorm, newQIntPtr, qSumOfCoordinate1,
+           qSumOfCoordinate2, ratio1, ratio2);
     //            cout << heap[0].id << "," << heap[0].data << endl;
     //            exit(0);
   }
 
   tt.stop();
 
-#ifdef TIME_IT
-  Logger::Log("Avg Num of p which can pass first Cauchy Schwarz inequality check: " + to_string((counter1 + 0.0)/ q->rowNum));
-  Logger::Log("Avg Num of p which can pass first Integer Pruning inequality check (line 4): " + to_string((counter2 + 0.0) / q->rowNum));
-  Logger::Log("Avg Num of p which can pass second Integer Pruning inequality check (line 7): " + to_string((counter3 + 0.0) / q->rowNum));
-  Logger::Log("Avg Num of p need to be calculated exactly (line 16): " + to_string((counter4 + 0.0) / q->rowNum));
-#endif
-
-  Logger::Log("preprocess time: " + to_string(offlineTime) + " secs");
-  Logger::Log("online time: " + to_string(tt.getElapsedTime()) + " secs");
-
-  if (Conf::outputResult) {
-    string resultFileName = Conf::resultPathPrefix + "-" + Conf::dataset + "-" + Conf::algName + "-" + to_string
-      (Conf::k) + "-" + to_string(Conf::scalingValue) + "-" +
-      to_string(Conf::SIGMA) + ".txt";
-    FileUtil::outputResult(q->rowNum, k, results, resultFileName);
-  }
+  onlineTime += tt.getElapsedTime();
 
   delete[] newQ;
   delete[] newQIntPtr;
-  delete[] results;
 }
 
-#endif //SVDINTUPPERBOUNDINCRPRUNE_H
+void SVDIntUpperBoundIncrPrune::addToOnlineTime(double time) {
+  onlineTime += time;
+}
+
+void SVDIntUpperBoundIncrPrune::outputResults() {
+#ifdef TIME_IT
+  Logger::Log(
+      "Avg Num of p which can pass first Cauchy Schwarz inequality check: " +
+      to_string((counter1 + 0.0) / q->rowNum));
+  Logger::Log("Avg Num of p which can pass first Integer Pruning inequality "
+              "check (line 4): " +
+              to_string((counter2 + 0.0) / q->rowNum));
+  Logger::Log("Avg Num of p which can pass second Integer Pruning inequality "
+              "check (line 7): " +
+              to_string((counter3 + 0.0) / q->rowNum));
+  Logger::Log("Avg Num of p need to be calculated exactly (line 16): " +
+              to_string((counter4 + 0.0) / q->rowNum));
+#endif
+
+  Logger::Log("preprocess time: " + to_string(offlineTime) + " secs");
+  Logger::Log("online time: " + to_string(onlineTime) + " secs");
+
+  if (Conf::outputResult) {
+    string resultFileName = Conf::resultPathPrefix + "-" + Conf::dataset + "-" +
+                            Conf::algName + "-" + to_string(Conf::k) + "-" +
+                            to_string(Conf::scalingValue) + "-" +
+                            to_string(Conf::SIGMA) + ".txt";
+    FileUtil::outputResult(q->rowNum, k, results, resultFileName);
+  }
+}
+
+#endif // SVDINTUPPERBOUNDINCRPRUNE_H

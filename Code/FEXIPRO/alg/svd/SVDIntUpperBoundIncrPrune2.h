@@ -15,56 +15,60 @@
 // FEIPR-SIR
 class SIRPrune {
 
-  private:
-    VectorElement *results;
-    Monitor tt;
-    double offlineTime;
-    double onlineTime;
+private:
+  VectorElement *results;
+  Monitor tt;
+  double offlineTime;
+  double onlineTime;
 
-    ExtendMatrix<SIRMatrixRow> *preprocessedP;
-    Matrix *q;
-    Matrix *u;
-    int k;
-    int checkDim;
-    int checkDim2;
-    int numOfDim;
-    int scalingValue;
-    vector<double> addend;
-    double minValue;
+  ExtendMatrix<SIRMatrixRow> *preprocessedP;
+  Matrix *q;
+  Matrix *u;
+  int k;
+  int checkDim;
+  int checkDim2;
+  int numOfDim;
+  int scalingValue;
+  vector<double> addend;
+  double minValue;
 
-    // log
+// log
 #ifdef TIME_IT
-    uint64_t counter1 = 0;
-    uint64_t counter2 = 0;
-    uint64_t counter3 = 0;
-    uint64_t counter4 = 0;
-    uint64_t counter5 = 0;
+  uint64_t counter1 = 0;
+  uint64_t counter2 = 0;
+  uint64_t counter3 = 0;
+  uint64_t counter4 = 0;
+  uint64_t counter5 = 0;
 #endif
 
-    void transferQ(double &qNorm, double &newSVDQNorm, double &subQNorm, double &subTransformedQNorm,
-        double &sumOfCoordinate, double &leftPartialSumOfCoordinate, const double *qPtr,
-        double *newQ,
-        int *qIntPtr, int &qSumOfCoordinate1, int &qSumOfCoordinate2, double &qRatio1,
-        double &qRatio2);
-    void refine(VectorElement *heap, const double qNorm, double *newQ,
-        const double subQNorm, const int *newQIntPtr, int qSumOfCoordinate1, int qSumOfCoordinate2,
-        double ratio1, double ratio2, const double newSVDQNorm, const double subTransformQNorm,
-        const double sumOfQCoordinate, const double leftPartialQSumOfCoordinate);
+  void transferQ(double &qNorm, double &newSVDQNorm, double &subQNorm,
+                 double &subTransformedQNorm, double &sumOfCoordinate,
+                 double &leftPartialSumOfCoordinate, const double *qPtr,
+                 double *newQ, int *qIntPtr, int &qSumOfCoordinate1,
+                 int &qSumOfCoordinate2, double &qRatio1, double &qRatio2);
+  void refine(VectorElement *heap, const double qNorm, double *newQ,
+              const double subQNorm, const int *newQIntPtr,
+              int qSumOfCoordinate1, int qSumOfCoordinate2, double ratio1,
+              double ratio2, const double newSVDQNorm,
+              const double subTransformQNorm, const double sumOfQCoordinate,
+              const double leftPartialQSumOfCoordinate);
 
-  public:
-    SIRPrune(const int k, const int scalingValue, const double SIGMA, Matrix *q, Matrix *p);
-    ~SIRPrune();
-    void topK(const int start_id, const int end_id);
-    void addToOnlineTime(double time);
-    void outputResults();
-
+public:
+  SIRPrune(const int k, const int scalingValue, const double SIGMA, Matrix *q,
+           Matrix *p);
+  ~SIRPrune();
+  void topK(const int start_id, const int end_id);
+  void addToOnlineTime(double time);
+  void outputResults();
 };
 
-inline void SIRPrune::transferQ(double &qNorm, double &newSVDQNorm, double &subQNorm, double &subTransformedQNorm,
-    double &sumOfCoordinate, double &leftPartialSumOfCoordinate, const double *qPtr,
-    double *newQ,
-    int *qIntPtr, int &qSumOfCoordinate1, int &qSumOfCoordinate2, double &qRatio1,
-    double &qRatio2) {
+inline void SIRPrune::transferQ(double &qNorm, double &newSVDQNorm,
+                                double &subQNorm, double &subTransformedQNorm,
+                                double &sumOfCoordinate,
+                                double &leftPartialSumOfCoordinate,
+                                const double *qPtr, double *newQ, int *qIntPtr,
+                                int &qSumOfCoordinate1, int &qSumOfCoordinate2,
+                                double &qRatio1, double &qRatio2) {
 
   double minValue = DBL_MAX;
   double maxValue = -DBL_MAX;
@@ -94,7 +98,6 @@ inline void SIRPrune::transferQ(double &qNorm, double &newSVDQNorm, double &subQ
     }
 
     newSVDQNorm += newQ[rowIndex] * newQ[rowIndex];
-
   }
 
   subQNorm = sqrt(newSVDQNorm);
@@ -109,7 +112,7 @@ inline void SIRPrune::transferQ(double &qNorm, double &newSVDQNorm, double &subQ
     qRatio2 = scalingValue / denominator;
   }
 
-  qSumOfCoordinate2 = 0; //sumOfCoordinate
+  qSumOfCoordinate2 = 0; // sumOfCoordinate
 
   for (int colIndex = q->colNum - 1; colIndex >= checkDim; colIndex--) {
     qIntPtr[colIndex] = floor(newQ[colIndex] * qRatio2);
@@ -137,7 +140,6 @@ inline void SIRPrune::transferQ(double &qNorm, double &newSVDQNorm, double &subQ
     if (newQ[rowIndex] > maxValue) {
       maxValue = newQ[rowIndex];
     }
-
   }
 
   newSVDQNorm = sqrt(newSVDQNorm);
@@ -164,7 +166,7 @@ inline void SIRPrune::transferQ(double &qNorm, double &newSVDQNorm, double &subQ
     qRatio1 = scalingValue / denominator;
   }
 
-  qSumOfCoordinate1 = 0; //sumOfCoordinate
+  qSumOfCoordinate1 = 0; // sumOfCoordinate
 
   for (int colIndex = checkDim - 1; colIndex >= 0; colIndex--) {
     qIntPtr[colIndex] = floor(newQ[colIndex] * qRatio1);
@@ -177,18 +179,22 @@ inline void SIRPrune::transferQ(double &qNorm, double &newSVDQNorm, double &subQ
 
   qRatio1 = 1 / qRatio1;
   qRatio2 = 1 / qRatio2;
-
 }
 
-inline void SIRPrune::refine(VectorElement *heap, const double qNorm, double *newQ,
-    const double subQNorm, const int *newQIntPtr, int qSumOfCoordinate1, int qSumOfCoordinate2,
-    double ratio1, double ratio2, const double newSVDQNorm, const double subTransformQNorm,
-    const double sumOfQCoordinate, const double leftPartialQSumOfCoordinate) {
+inline void SIRPrune::refine(VectorElement *heap, const double qNorm,
+                             double *newQ, const double subQNorm,
+                             const int *newQIntPtr, int qSumOfCoordinate1,
+                             int qSumOfCoordinate2, double ratio1,
+                             double ratio2, const double newSVDQNorm,
+                             const double subTransformQNorm,
+                             const double sumOfQCoordinate,
+                             const double leftPartialQSumOfCoordinate) {
 
   int heapCount = 0;
   for (int rowIndex = 0; rowIndex < k; rowIndex++) {
     const SIRMatrixRow *pRowPtr = preprocessedP->getRowPtr(rowIndex);
-    heap_enqueue(Calculator::innerProduct(newQ, pRowPtr->rawData, q->colNum), pRowPtr->gRowID, heap, &heapCount);
+    heap_enqueue(Calculator::innerProduct(newQ, pRowPtr->rawData, q->colNum),
+                 pRowPtr->gRowID, heap, &heapCount);
   }
 
   double originalLowerBound = heap[0].data;
@@ -196,7 +202,10 @@ inline void SIRPrune::refine(VectorElement *heap, const double qNorm, double *ne
   int gRowIDForBoundItem = heap[0].id;
   const SIRMatrixRow *pRowPtr = preprocessedP->getRowPtr(gRowIDForBoundItem);
 
-  double lowerBoundInNewSpace = (originalLowerBound/newSVDQNorm + sumOfQCoordinate + pRowPtr->sumOfCoordinate) * 2 + pRowPtr->partialSumOfCoordinate;
+  double lowerBoundInNewSpace = (originalLowerBound / newSVDQNorm +
+                                 sumOfQCoordinate + pRowPtr->sumOfCoordinate) *
+                                    2 +
+                                pRowPtr->partialSumOfCoordinate;
 
   for (int rowIndex = k; rowIndex < preprocessedP->rowNum; rowIndex++) {
 
@@ -204,23 +213,22 @@ inline void SIRPrune::refine(VectorElement *heap, const double qNorm, double *ne
 
     if (pRowPtr->norm * qNorm <= originalLowerBound) {
       break;
-    }
-    else {
+    } else {
 #ifdef TIME_IT
       counter1++;
 #endif
 
       int bound = pRowPtr->sumOfCoordinate1 + qSumOfCoordinate1;
-      const int* pIntPtr = pRowPtr->iRawData;
+      const int *pIntPtr = pRowPtr->iRawData;
 
-      for(int dim = 0; dim < checkDim; dim++) {
+      for (int dim = 0; dim < checkDim; dim++) {
         bound += pIntPtr[dim] * newQIntPtr[dim];
       }
 
       double subNormBound = subQNorm * pRowPtr->subNorm;
       double leftInt = bound * ratio1;
       // Line 4 in Coordinate Scan
-      if(leftInt + subNormBound <= originalLowerBound){
+      if (leftInt + subNormBound <= originalLowerBound) {
         continue;
       }
 
@@ -229,12 +237,12 @@ inline void SIRPrune::refine(VectorElement *heap, const double qNorm, double *ne
 #endif
 
       bound = pRowPtr->sumOfCoordinate2 + qSumOfCoordinate2;
-      for(int dim = checkDim; dim < q->colNum; dim++) {
+      for (int dim = checkDim; dim < q->colNum; dim++) {
         bound += pIntPtr[dim] * newQIntPtr[dim];
       }
 
       // Line 7 in Coordinate Scan
-      if(leftInt + bound * ratio2 <= originalLowerBound) {
+      if (leftInt + bound * ratio2 <= originalLowerBound) {
         continue;
       }
 
@@ -244,12 +252,12 @@ inline void SIRPrune::refine(VectorElement *heap, const double qNorm, double *ne
 
       double innerProduct = 0;
       const double *pPtr = pRowPtr->rawData;
-      for(int dim = 0; dim < checkDim; dim++) {
+      for (int dim = 0; dim < checkDim; dim++) {
         innerProduct += pPtr[dim] * newQ[dim];
       }
 
       // Line 12 in Coordinate Scan
-      if(innerProduct + subNormBound <= originalLowerBound){
+      if (innerProduct + subNormBound <= originalLowerBound) {
         continue;
       }
 
@@ -257,10 +265,16 @@ inline void SIRPrune::refine(VectorElement *heap, const double qNorm, double *ne
       counter4++;
 #endif
 
-      double sublLowerBoundInNewSpace = (innerProduct/newSVDQNorm + leftPartialQSumOfCoordinate + pRowPtr->leftPartialSumOfCoordinate) * 2 + pRowPtr->partialSumOfCoordinate;
+      double sublLowerBoundInNewSpace =
+          (innerProduct / newSVDQNorm + leftPartialQSumOfCoordinate +
+           pRowPtr->leftPartialSumOfCoordinate) *
+              2 +
+          pRowPtr->partialSumOfCoordinate;
 
       // Line 16 in Coordinate Scan
-      if (sublLowerBoundInNewSpace + pRowPtr->subTransformedSubVNorm * subTransformQNorm <= lowerBoundInNewSpace) {
+      if (sublLowerBoundInNewSpace +
+              pRowPtr->subTransformedSubVNorm * subTransformQNorm <=
+          lowerBoundInNewSpace) {
         continue;
       }
 
@@ -268,7 +282,7 @@ inline void SIRPrune::refine(VectorElement *heap, const double qNorm, double *ne
       counter5++;
 #endif
 
-      for(int dim = checkDim; dim < q->colNum; dim++) {
+      for (int dim = checkDim; dim < q->colNum; dim++) {
         innerProduct += pPtr[dim] * newQ[dim];
       }
 
@@ -279,16 +293,20 @@ inline void SIRPrune::refine(VectorElement *heap, const double qNorm, double *ne
         originalLowerBound = heap[0].data;
 
         int gRowIDForBoundItem = heap[0].id;
-        const SIRMatrixRow *pRowPtr = preprocessedP->getRowPtr(gRowIDForBoundItem);
-        lowerBoundInNewSpace = (originalLowerBound/newSVDQNorm + sumOfQCoordinate + pRowPtr->sumOfCoordinate) * 2 + pRowPtr->partialSumOfCoordinate;
-
+        const SIRMatrixRow *pRowPtr =
+            preprocessedP->getRowPtr(gRowIDForBoundItem);
+        lowerBoundInNewSpace = (originalLowerBound / newSVDQNorm +
+                                sumOfQCoordinate + pRowPtr->sumOfCoordinate) *
+                                   2 +
+                               pRowPtr->partialSumOfCoordinate;
       }
     }
   }
 }
 
-inline SIRPrune::SIRPrune(const int k, const int scalingValue, const double SIGMA, Matrix *q, Matrix *p) {
-  this->results = new VectorElement[q->rowNum * k];
+inline SIRPrune::SIRPrune(const int k, const int scalingValue,
+                          const double SIGMA, Matrix *q, Matrix *p) {
+  results = new VectorElement[q->rowNum * k];
 
   mat P_t;
   P_t.load(Conf::pDataPath, csv_ascii);
@@ -310,7 +328,8 @@ inline SIRPrune::SIRPrune(const int k, const int scalingValue, const double SIGM
   this->checkDim2 = checkDim + 2;
 
   preprocessedP = new ExtendMatrix<SIRMatrixRow>();
-  preprocessedP->initSIRMatrix(*p, *v, checkDim, checkDim2, scalingValue, addend, minValue);
+  preprocessedP->initSIRMatrix(*p, *v, checkDim, checkDim2, scalingValue,
+                               addend, minValue);
 
   delete v;
 
@@ -330,7 +349,7 @@ inline SIRPrune::~SIRPrune() {
   }
 
   if (results) {
-    delete results;
+    delete[] results;
   }
 }
 
@@ -364,15 +383,16 @@ inline void SIRPrune::topK(const int start_id, const int end_id) {
 
     const double *qPtr = q->getRowPtr(qID);
 
-    transferQ(qNorm, newSVDQNorm, subQNorm, transformSubQNorm, sumOfQCoordinate, leftPartialQSumOfCoordinate, qPtr,
-        newQ, newQIntPtr, qSumOfCoordinate1, qSumOfCoordinate2, qRatio1, qRatio2);
+    transferQ(qNorm, newSVDQNorm, subQNorm, transformSubQNorm, sumOfQCoordinate,
+              leftPartialQSumOfCoordinate, qPtr, newQ, newQIntPtr,
+              qSumOfCoordinate1, qSumOfCoordinate2, qRatio1, qRatio2);
 
     ratio1 = qRatio1 * pRatio1;
     ratio2 = qRatio2 * pRatio2;
 
-    refine(heap, qNorm, newQ, subQNorm, newQIntPtr, qSumOfCoordinate1, qSumOfCoordinate2, ratio1, ratio2,
-        newSVDQNorm, transformSubQNorm, sumOfQCoordinate, leftPartialQSumOfCoordinate);
-
+    refine(heap, qNorm, newQ, subQNorm, newQIntPtr, qSumOfCoordinate1,
+           qSumOfCoordinate2, ratio1, ratio2, newSVDQNorm, transformSubQNorm,
+           sumOfQCoordinate, leftPartialQSumOfCoordinate);
   }
 
   tt.stop();
@@ -382,31 +402,36 @@ inline void SIRPrune::topK(const int start_id, const int end_id) {
   delete[] newQIntPtr;
 }
 
-void SIRPrune::addToOnlineTime(double time) {
-  onlineTime += time;
-}
+void SIRPrune::addToOnlineTime(double time) { onlineTime += time; }
 
 void SIRPrune::outputResults() {
 #ifdef TIME_IT
-  Logger::Log("Avg Num of p which can pass first Cauchy Schwarz inequality check: " + to_string((counter1 + 0.0)/ q
-        ->rowNum));
-  Logger::Log("Avg Num of p which can pass first Integer Pruning inequality check (line 4): " + to_string((counter2 + 0.0) / q->rowNum));
-  Logger::Log("Avg Num of p which can pass second Integer Pruning inequality check (line 7): " + to_string((counter3 + 0.0) / q->rowNum));
-  Logger::Log("Avg Num of p which can pass fourth inequality check (line 12): " + to_string((counter4 + 0.0) / q->rowNum));
-  Logger::Log("Avg Num of p need to be calculated exactly (line 16): " + to_string((counter5 + 0.0) / q->rowNum));
+  Logger::Log(
+      "Avg Num of p which can pass first Cauchy Schwarz inequality check: " +
+      to_string((counter1 + 0.0) / q->rowNum));
+  Logger::Log("Avg Num of p which can pass first Integer Pruning inequality "
+              "check (line 4): " +
+              to_string((counter2 + 0.0) / q->rowNum));
+  Logger::Log("Avg Num of p which can pass second Integer Pruning inequality "
+              "check (line 7): " +
+              to_string((counter3 + 0.0) / q->rowNum));
+  Logger::Log(
+      "Avg Num of p which can pass fourth inequality check (line 12): " +
+      to_string((counter4 + 0.0) / q->rowNum));
+  Logger::Log("Avg Num of p need to be calculated exactly (line 16): " +
+              to_string((counter5 + 0.0) / q->rowNum));
 #endif
-
 
   Logger::Log("preprocess time: " + to_string(offlineTime) + " secs");
   Logger::Log("online time: " + to_string(onlineTime) + " secs");
 
   if (Conf::outputResult) {
-    string resultFileName = Conf::resultPathPrefix + "-" + Conf::dataset + "-" + Conf::algName + "-" + to_string
-      (Conf::k) + "-" + to_string(Conf::scalingValue) + "-" +
-      to_string(Conf::SIGMA) + ".txt";
+    string resultFileName = Conf::resultPathPrefix + "-" + Conf::dataset + "-" +
+                            Conf::algName + "-" + to_string(Conf::k) + "-" +
+                            to_string(Conf::scalingValue) + "-" +
+                            to_string(Conf::SIGMA) + ".txt";
     FileUtil::outputResult(q->rowNum, k, results, resultFileName);
   }
-
 }
 
-#endif //SIRPRUNE_H
+#endif // SIRPRUNE_H

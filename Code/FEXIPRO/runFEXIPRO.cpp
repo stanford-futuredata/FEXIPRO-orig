@@ -79,6 +79,40 @@ inline void computeTopK(double *ratings_matrix, int *top_K_items,
   }
 }
 
+
+inline double decisionRuleBlockedMM(Matrix &q, Matrix &p) {
+    std::random_device rd;     // only used once to initialise (seed) engine
+    std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
+
+    Monitor tt;
+    const unsigned int num_users_per_block = 4 * (L2_CACHE_SIZE / (sizeof(double) * q.colNum));
+    std::uniform_int_distribution<int> uni(0, q.rowNum - num_users_per_block); // guaranteed unbiased
+    const unsigned int rand_ind = uni(rng);
+    double *user_ptr = q.getRowPtr(rand_ind);
+    double *item_ptr = p.getRowPtr(0);
+    const int m = std::min(num_users_per_block, q.rowNum - rand_ind);
+    const int n = p.rowNum;
+    const int k = q.colNum;
+    const float alpha = 1.0;
+    const float beta = 0.0;
+    double *matrix_product = (double *)malloc(m * n * sizeof(double));
+    int *top_K_items = (int *)malloc(m * Conf::k * sizeof(int));
+
+    tt.start();
+    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
+                user_ptr, k, item_ptr, k, beta, matrix_product, n);
+
+    if (Conf::k == 1) {
+      computeTopRating(matrix_product, top_K_items, m, n);
+    } else {
+      computeTopK(matrix_product, top_K_items, m, n, Conf::k);
+    }
+    tt.stop();
+    free(matrix_product);
+    free(top_K_items);
+    return tt.getElapsedTime();
+}
+
 int main(int argc, char **argv) {
   omp_set_dynamic(0);
   omp_set_num_threads(1);
@@ -164,34 +198,7 @@ int main(int argc, char **argv) {
     SIRPrune sirPrune(Conf::k, Conf::scalingValue, Conf::SIGMA, &q, &p);
 
 #ifdef ONLINE_DECISION_RULE
-    std::random_device rd;     // only used once to initialise (seed) engine
-    std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
-
-    Monitor tt;
-    const unsigned int num_users_per_block = 4 * (L2_CACHE_SIZE / (sizeof(double) * q.colNum));
-    std::uniform_int_distribution<int> uni(0, q.rowNum - num_users_per_block); // guaranteed unbiased
-    const unsigned int rand_ind = uni(rng);
-    double *user_ptr = q.getRowPtr(rand_ind);
-    double *item_ptr = p.getRowPtr(0);
-    const int m = std::min(num_users_per_block, q.rowNum - rand_ind);
-    const int n = p.rowNum;
-    const int k = q.colNum;
-    const float alpha = 1.0;
-    const float beta = 0.0;
-    double *matrix_product = (double *)malloc(m * n * sizeof(double));
-    int *top_K_items = (int *)malloc(m * Conf::k * sizeof(int));
-
-    tt.start();
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
-                user_ptr, k, item_ptr, k, beta, matrix_product, n);
-
-    if (Conf::k == 1) {
-      computeTopRating(matrix_product, top_K_items, m, n);
-    } else {
-      computeTopK(matrix_product, top_K_items, m, n, Conf::k);
-    }
-    tt.stop();
-    const double blocked_mm_time = tt.getElapsedTime();
+    const double blocked_mm_time = decisionRuleBlockedMM();
 
     tt.start();
     sirPrune.topK(rand_ind, rand_ind + num_users_per_block);
@@ -288,9 +295,39 @@ int main(int argc, char **argv) {
     Logger::Log("SIGMA: " + to_string(Conf::SIGMA));
     Logger::Log("Scaling Value: " + to_string(Conf::scalingValue));
 
+    // Construct index
     SVDIntUpperBoundIncrPrune svdIntUpperBoundIncrPrune(
         Conf::k, Conf::scalingValue, Conf::SIGMA, &q, &p);
-    svdIntUpperBoundIncrPrune.topK();
+
+#ifdef ONLINE_DECISION_RULE
+    const double blocked_mm_time = decisionRuleBlockedMM();
+
+    tt.start();
+    svdIntUpperBoundIncrPrune.topK(rand_ind, rand_ind + num_users_per_block);
+    tt.stop();
+
+    const double fexipro_time = tt.getElapsedTime();
+
+    Logger::Log("Blocked MM time: " + to_string(blocked_mm_time));
+    Logger::Log("FEXIPRO time: " + to_string(fexipro_time));
+    if (blocked_mm_time < fexipro_time) {
+      Logger::Log("Blocked MM wins");
+    } else {
+      Logger::Log("FEXIPRO wins");
+#ifndef TEST_ONLY
+      svdIntUpperBoundIncrPrune.topK(0, rand_ind);
+      svdIntUpperBoundIncrPrune.topK(rand_ind + num_users_per_block, q.rowNum);
+      svdIntUpperBoundIncrPrune.addToOnlineTime(blocked_mm_time);
+      svdIntUpperBoundIncrPrune.outputResults();
+#endif
+    }
+#else
+    svdIntUpperBoundIncrPrune.topK(0, q.rowNum);
+    svdIntUpperBoundIncrPrune.outputResults();
+#endif
+
+
+
 
   } else if (Conf::algName == "BallTree") {
 
