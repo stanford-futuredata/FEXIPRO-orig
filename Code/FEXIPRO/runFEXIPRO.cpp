@@ -79,38 +79,34 @@ inline void computeTopK(double *ratings_matrix, int *top_K_items,
   }
 }
 
+inline double decisionRuleBlockedMM(Matrix &q, Matrix &p,
+                                    const unsigned int rand_ind,
+                                    const unsigned int num_users_per_block) {
 
-inline double decisionRuleBlockedMM(Matrix &q, Matrix &p) {
-    std::random_device rd;     // only used once to initialise (seed) engine
-    std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
+  Monitor tt;
+  double *user_ptr = q.getRowPtr(rand_ind);
+  double *item_ptr = p.getRowPtr(0);
+  const int m = std::min(num_users_per_block, q.rowNum - rand_ind);
+  const int n = p.rowNum;
+  const int k = q.colNum;
+  const float alpha = 1.0;
+  const float beta = 0.0;
+  double *matrix_product = (double *)malloc(m * n * sizeof(double));
+  int *top_K_items = (int *)malloc(m * Conf::k * sizeof(int));
 
-    Monitor tt;
-    const unsigned int num_users_per_block = 4 * (L2_CACHE_SIZE / (sizeof(double) * q.colNum));
-    std::uniform_int_distribution<int> uni(0, q.rowNum - num_users_per_block); // guaranteed unbiased
-    const unsigned int rand_ind = uni(rng);
-    double *user_ptr = q.getRowPtr(rand_ind);
-    double *item_ptr = p.getRowPtr(0);
-    const int m = std::min(num_users_per_block, q.rowNum - rand_ind);
-    const int n = p.rowNum;
-    const int k = q.colNum;
-    const float alpha = 1.0;
-    const float beta = 0.0;
-    double *matrix_product = (double *)malloc(m * n * sizeof(double));
-    int *top_K_items = (int *)malloc(m * Conf::k * sizeof(int));
+  tt.start();
+  cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha, user_ptr,
+              k, item_ptr, k, beta, matrix_product, n);
 
-    tt.start();
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasTrans, m, n, k, alpha,
-                user_ptr, k, item_ptr, k, beta, matrix_product, n);
-
-    if (Conf::k == 1) {
-      computeTopRating(matrix_product, top_K_items, m, n);
-    } else {
-      computeTopK(matrix_product, top_K_items, m, n, Conf::k);
-    }
-    tt.stop();
-    free(matrix_product);
-    free(top_K_items);
-    return tt.getElapsedTime();
+  if (Conf::k == 1) {
+    computeTopRating(matrix_product, top_K_items, m, n);
+  } else {
+    computeTopK(matrix_product, top_K_items, m, n, Conf::k);
+  }
+  tt.stop();
+  free(matrix_product);
+  free(top_K_items);
+  return tt.getElapsedTime();
 }
 
 int main(int argc, char **argv) {
@@ -198,8 +194,19 @@ int main(int argc, char **argv) {
     SIRPrune sirPrune(Conf::k, Conf::scalingValue, Conf::SIGMA, &q, &p);
 
 #ifdef ONLINE_DECISION_RULE
-    const double blocked_mm_time = decisionRuleBlockedMM();
+    std::random_device rd; // only used once to initialise (seed) engine
+    std::mt19937 rng(
+        rd()); // random-number engine used (Mersenne-Twister in this case)
+    const unsigned int num_users_per_block =
+        4 * (L2_CACHE_SIZE / (sizeof(double) * q.colNum));
+    std::uniform_int_distribution<int> uni(
+        0, q.rowNum - num_users_per_block); // guaranteed unbiased
+    const unsigned int rand_ind = uni(rng);
 
+    const double blocked_mm_time =
+        decisionRuleBlockedMM(q, p, rand_ind, num_users_per_block);
+
+    Monitor tt;
     tt.start();
     sirPrune.topK(rand_ind, rand_ind + num_users_per_block);
     tt.stop();
@@ -300,8 +307,19 @@ int main(int argc, char **argv) {
         Conf::k, Conf::scalingValue, Conf::SIGMA, &q, &p);
 
 #ifdef ONLINE_DECISION_RULE
-    const double blocked_mm_time = decisionRuleBlockedMM();
+    std::random_device rd; // only used once to initialise (seed) engine
+    std::mt19937 rng(
+        rd()); // random-number engine used (Mersenne-Twister in this case)
+    const unsigned int num_users_per_block =
+        4 * (L2_CACHE_SIZE / (sizeof(double) * q.colNum));
+    std::uniform_int_distribution<int> uni(
+        0, q.rowNum - num_users_per_block); // guaranteed unbiased
+    const unsigned int rand_ind = uni(rng);
 
+    const double blocked_mm_time =
+        decisionRuleBlockedMM(q, p, rand_ind, num_users_per_block);
+
+    Monitor tt;
     tt.start();
     svdIntUpperBoundIncrPrune.topK(rand_ind, rand_ind + num_users_per_block);
     tt.stop();
@@ -325,9 +343,6 @@ int main(int argc, char **argv) {
     svdIntUpperBoundIncrPrune.topK(0, q.rowNum);
     svdIntUpperBoundIncrPrune.outputResults();
 #endif
-
-
-
 
   } else if (Conf::algName == "BallTree") {
 
