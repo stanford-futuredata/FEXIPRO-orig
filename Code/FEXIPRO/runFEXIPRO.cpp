@@ -22,6 +22,8 @@
 #include <algorithm>
 #include <cblas.h>
 
+#define L2_CACHE_SIZE 256000
+
 namespace po = boost::program_options;
 
 void basicLog(const Matrix &q, const Matrix &p, const int k) {
@@ -165,7 +167,7 @@ int main(int argc, char **argv) {
     std::mt19937 rng(rd());    // random-number engine used (Mersenne-Twister in this case)
 
     Monitor tt;
-    const unsigned int num_users_per_block = 25000;
+    const unsigned int num_users_per_block = 4 * (L2_CACHE_SIZE / (sizeof(double) * q.colNum));
     std::uniform_int_distribution<int> uni(0, q.rowNum - num_users_per_block); // guaranteed unbiased
     const unsigned int rand_ind = uni(rng);
     double *user_ptr = q.getRowPtr(rand_ind);
