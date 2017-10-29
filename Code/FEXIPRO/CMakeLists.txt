@@ -56,7 +56,7 @@ set(structs
         structs/RedSVDMatrixRow.h
         structs/RedSVDMatrixRow2.h)
 
-link_directories("/usr/lib/openblas-base")
+link_directories(/usr/lib/openblas-base)
 
 set(ARMADILLO_INCLUDE_DIRS "~/packages/include/aramdillo")
 include_directories(${ARMADILLO_INCLUDE_DIRS})
