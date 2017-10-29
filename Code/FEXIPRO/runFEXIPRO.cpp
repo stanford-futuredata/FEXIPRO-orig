@@ -23,6 +23,7 @@
 #include <cblas.h>
 
 #define L2_CACHE_SIZE 256000
+#define MAX_MEM_SIZE (257840L*1024L*1024L)
 
 namespace po = boost::program_options;
 
@@ -81,12 +82,12 @@ inline void computeTopK(double *ratings_matrix, int *top_K_items,
 
 inline double decisionRuleBlockedMM(Matrix &q, Matrix &p,
                                     const unsigned int rand_ind,
-                                    const unsigned int num_users_per_block) {
+                                    const unsigned long num_users_per_block) {
 
   Monitor tt;
   double *user_ptr = q.getRowPtr(rand_ind);
   double *item_ptr = p.getRowPtr(0);
-  const int m = std::min(num_users_per_block, q.rowNum - rand_ind);
+  const long m = num_users_per_block;
   const int n = p.rowNum;
   const int k = q.colNum;
   const float alpha = 1.0;
@@ -197,8 +198,11 @@ int main(int argc, char **argv) {
     std::random_device rd; // only used once to initialise (seed) engine
     std::mt19937 rng(
         rd()); // random-number engine used (Mersenne-Twister in this case)
-    const unsigned int num_users_per_block =
+    unsigned long num_users_per_block =
         4 * (L2_CACHE_SIZE / (sizeof(double) * q.colNum));
+    while (num_users_per_block*p.rowNum*sizeof(double) > MAX_MEM_SIZE) {
+      num_users_per_block /= 2;
+    }
     std::uniform_int_distribution<int> uni(
         0, q.rowNum - num_users_per_block); // guaranteed unbiased
     const unsigned int rand_ind = uni(rng);
@@ -310,8 +314,11 @@ int main(int argc, char **argv) {
     std::random_device rd; // only used once to initialise (seed) engine
     std::mt19937 rng(
         rd()); // random-number engine used (Mersenne-Twister in this case)
-    const unsigned int num_users_per_block =
+    unsigned long num_users_per_block =
         4 * (L2_CACHE_SIZE / (sizeof(double) * q.colNum));
+    while (num_users_per_block*p.rowNum*sizeof(double) > MAX_MEM_SIZE) {
+      num_users_per_block /= 2;
+    }
     std::uniform_int_distribution<int> uni(
         0, q.rowNum - num_users_per_block); // guaranteed unbiased
     const unsigned int rand_ind = uni(rng);
