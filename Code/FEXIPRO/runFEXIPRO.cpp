@@ -23,7 +23,7 @@
 #include <cblas.h>
 
 #define L2_CACHE_SIZE 256000
-#define MAX_MEM_SIZE (257840L*1024L*1024L)
+#define MAX_MEM_SIZE (257840L * 1024L * 1024L)
 
 namespace po = boost::program_options;
 
@@ -107,12 +107,14 @@ inline double decisionRuleBlockedMM(Matrix &q, Matrix &p,
   tt.stop();
   free(matrix_product);
   free(top_K_items);
-  return tt.getElapsedTime();
+  return tt.getElapsedTime() / num_users_per_block;
 }
 
 int main(int argc, char **argv) {
   omp_set_dynamic(0);
   omp_set_num_threads(1);
+
+  double user_sample_ratio;
 
   po::options_description desc("Allowed options");
   desc.add_options()("help", "produce help message")(
@@ -123,6 +125,8 @@ int main(int argc, char **argv) {
       "q", po::value<string>(&(Conf::qDataPath)), "file path of q Data")(
       "p", po::value<string>(&(Conf::pDataPath)), "file path of p Data")(
       "scalingValue", po::value<int>(&(Conf::scalingValue))->default_value(127),
+      "maximum value for scaling")(
+      "x", po::value<double>(&(user_sample_ratio))->default_value(0.0),
       "maximum value for scaling")(
       "SIGMA", po::value<double>(&(Conf::SIGMA))->default_value(0.8),
       "percentage of SIGMA for SVD incremental prune")(
@@ -182,10 +186,18 @@ int main(int argc, char **argv) {
 
   } else if (Conf::algName == "SIR") {
 
+#ifdef ONLINE_DECISION_RULE
+    string logFileName = Conf::logPathPrefix + Conf::dataset + "-" +
+                         Conf::algName + "-" + to_string(Conf::k) + "-" +
+                         to_string(Conf::scalingValue) + "-" +
+                         to_string(Conf::SIGMA) + "-" +
+                         to_string(user_sample_ratio) + ".txt";
+#else
     string logFileName = Conf::logPathPrefix + Conf::dataset + "-" +
                          Conf::algName + "-" + to_string(Conf::k) + "-" +
                          to_string(Conf::scalingValue) + "-" +
                          to_string(Conf::SIGMA) + ".txt";
+#endif
     Logger::open(logFileName);
     basicLog(q, p, Conf::k);
     Logger::Log("SIGMA: " + to_string(Conf::SIGMA));
@@ -195,13 +207,20 @@ int main(int argc, char **argv) {
     SIRPrune sirPrune(Conf::k, Conf::scalingValue, Conf::SIGMA, &q, &p);
 
 #ifdef ONLINE_DECISION_RULE
+    Logger::Log("User sample ratio: " + to_string(user_sample_ratio));
     std::random_device rd; // only used once to initialise (seed) engine
     std::mt19937 rng(
         rd()); // random-number engine used (Mersenne-Twister in this case)
-    unsigned long num_users_per_block =
-        4 * (L2_CACHE_SIZE / (sizeof(double) * q.colNum));
-    while (num_users_per_block*p.rowNum*sizeof(double) > MAX_MEM_SIZE) {
-      num_users_per_block /= 2;
+    unsigned long num_users_per_block = 0;
+    if (user_sample_ratio == 0.0) {
+      // Default
+      num_users_per_block =
+          4 * L2_CACHE_SIZE / (sizeof(double) * q.colNum);
+      while (num_users_per_block * p.rowNum * sizeof(double) > MAX_MEM_SIZE) {
+        num_users_per_block /= 2;
+      }
+    } else {
+      num_users_per_block = (long)(user_sample_ratio * q.rowNum);
     }
     std::uniform_int_distribution<int> uni(
         0, q.rowNum - num_users_per_block); // guaranteed unbiased
@@ -215,7 +234,7 @@ int main(int argc, char **argv) {
     sirPrune.topK(rand_ind, rand_ind + num_users_per_block);
     tt.stop();
 
-    const double fexipro_time = tt.getElapsedTime();
+    const double fexipro_time = tt.getElapsedTime() / num_users_per_block;
 
     Logger::Log("Blocked MM time: " + to_string(blocked_mm_time));
     Logger::Log("FEXIPRO time: " + to_string(fexipro_time));
@@ -297,10 +316,18 @@ int main(int argc, char **argv) {
 
   } else if (Conf::algName == "SI") {
 
+#ifdef ONLINE_DECISION_RULE
+    string logFileName = Conf::logPathPrefix + Conf::dataset + "-" +
+                         Conf::algName + "-" + to_string(Conf::k) + "-" +
+                         to_string(Conf::scalingValue) + "-" +
+                         to_string(Conf::SIGMA) + "-" +
+                         to_string(user_sample_ratio) + ".txt";
+#else
     string logFileName = Conf::logPathPrefix + Conf::dataset + "-" +
                          Conf::algName + "-" + to_string(Conf::k) + "-" +
                          to_string(Conf::scalingValue) + "-" +
                          to_string(Conf::SIGMA) + ".txt";
+#endif
     Logger::open(logFileName);
     basicLog(q, p, Conf::k);
     Logger::Log("SIGMA: " + to_string(Conf::SIGMA));
@@ -311,13 +338,20 @@ int main(int argc, char **argv) {
         Conf::k, Conf::scalingValue, Conf::SIGMA, &q, &p);
 
 #ifdef ONLINE_DECISION_RULE
+    Logger::Log("User sample ratio: " + to_string(user_sample_ratio));
     std::random_device rd; // only used once to initialise (seed) engine
     std::mt19937 rng(
         rd()); // random-number engine used (Mersenne-Twister in this case)
-    unsigned long num_users_per_block =
-        4 * (L2_CACHE_SIZE / (sizeof(double) * q.colNum));
-    while (num_users_per_block*p.rowNum*sizeof(double) > MAX_MEM_SIZE) {
-      num_users_per_block /= 2;
+    unsigned long num_users_per_block = 0;
+    if (user_sample_ratio == 0.0) {
+      // Default
+      num_users_per_block =
+          4 * L2_CACHE_SIZE / (sizeof(double) * q.colNum);
+      while (num_users_per_block * p.rowNum * sizeof(double) > MAX_MEM_SIZE) {
+        num_users_per_block /= 2;
+      }
+    } else {
+      num_users_per_block = (long)(user_sample_ratio * q.rowNum);
     }
     std::uniform_int_distribution<int> uni(
         0, q.rowNum - num_users_per_block); // guaranteed unbiased
@@ -331,7 +365,7 @@ int main(int argc, char **argv) {
     svdIntUpperBoundIncrPrune.topK(rand_ind, rand_ind + num_users_per_block);
     tt.stop();
 
-    const double fexipro_time = tt.getElapsedTime();
+    const double fexipro_time = tt.getElapsedTime() / num_users_per_block;
 
     Logger::Log("Blocked MM time: " + to_string(blocked_mm_time));
     Logger::Log("FEXIPRO time: " + to_string(fexipro_time));
