@@ -222,6 +222,7 @@ int main(int argc, char **argv) {
     } else {
       num_users_per_block = (long)(user_sample_ratio * q.rowNum);
     }
+    Logger::Log("Num sampled users: " + to_string(num_users_per_block));
     std::uniform_int_distribution<int> uni(
         0, q.rowNum - num_users_per_block); // guaranteed unbiased
     const unsigned int rand_ind = uni(rng);
@@ -245,10 +246,10 @@ int main(int argc, char **argv) {
 #ifndef TEST_ONLY
       sirPrune.topK(0, rand_ind);
       sirPrune.topK(rand_ind + num_users_per_block, q.rowNum);
-      sirPrune.addToOnlineTime(blocked_mm_time);
-      sirPrune.outputResults();
 #endif
     }
+    sirPrune.addToOnlineTime(blocked_mm_time * num_users_per_block);
+    sirPrune.outputResults();
 #else
     sirPrune.topK(0, q.rowNum);
     sirPrune.outputResults();
@@ -353,6 +354,7 @@ int main(int argc, char **argv) {
     } else {
       num_users_per_block = (long)(user_sample_ratio * q.rowNum);
     }
+    Logger::Log("Num sampled users: " + to_string(num_users_per_block));
     std::uniform_int_distribution<int> uni(
         0, q.rowNum - num_users_per_block); // guaranteed unbiased
     const unsigned int rand_ind = uni(rng);
@@ -376,10 +378,10 @@ int main(int argc, char **argv) {
 #ifndef TEST_ONLY
       svdIntUpperBoundIncrPrune.topK(0, rand_ind);
       svdIntUpperBoundIncrPrune.topK(rand_ind + num_users_per_block, q.rowNum);
-      svdIntUpperBoundIncrPrune.addToOnlineTime(blocked_mm_time);
-      svdIntUpperBoundIncrPrune.outputResults();
 #endif
     }
+    svdIntUpperBoundIncrPrune.addToOnlineTime(blocked_mm_time*num_users_per_block);
+    svdIntUpperBoundIncrPrune.outputResults();
 #else
     svdIntUpperBoundIncrPrune.topK(0, q.rowNum);
     svdIntUpperBoundIncrPrune.outputResults();
